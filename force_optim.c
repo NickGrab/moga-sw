@@ -6,19 +6,14 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include "mpi.h"
 
 
 
-
-//float rho[3] = {0.345,0.3241,1.567};
-//float B[3] = {3.4546,0.456,2.976};
-//double rmax_2b[3];
-
-//float lambda[2] = {1.34,7};
-int population_num = 20;
+int population_num = 5;
 double theta0 = 81.9966; // necessary dummy variable for unchanging variable. Worth knowing globally
-//double gamma_3b[2] = {1.21,3.655};
-//double rmax_3b[2];
+int iteration_num = 1;
+
 
 
 void file_copy(char file[], char file_copy[], int bands) {
@@ -125,7 +120,7 @@ void modify_input(double A[3], double rho[3], double B[3], double lambda[2], dou
     fclose(ff); //close input file
 }
 
-double *read_output(double obj[]) {
+void read_output(double err_a,double elast) {
 
     FILE *af;
     char output[] ="afterfit.out";
@@ -133,6 +128,7 @@ double *read_output(double obj[]) {
     
     double c_11, c, el_c;
     double lat_const = 12.29, elast_real = 238; // elastic constant in GPa
+    double elast_calc;
 
     char lines[200], search_string[] = "  Comparison of initial and final structures : ", ch;
     while (fgets(lines,200,af) != NULL) { // search output file for ^ test string
@@ -148,7 +144,7 @@ double *read_output(double obj[]) {
     }
     fgets(lines,200,af); // reads line in
     int len = strlen(lines);
-    sscanf(&lines[len-8], "%lf",&obj[0]); // assigns value of percent error in a
+    sscanf(&lines[len-8], "%lf",&err_a); // assigns value of percent error in a
     
     line_down = 0;
     while (line_down !=1) { // moves down to elastic constant "c" (for elastic fit)
@@ -158,7 +154,7 @@ double *read_output(double obj[]) {
     fgets(lines,200,af);
     char cw; // dummy throwaway
     double c_init; //dummy throwaway
-    sscanf(lines,"%s %lf %lf", cw, &c_init, &c); // assigns value of elastic constant "c" (c_final)
+    sscanf(lines,"%s %lf %lf", &cw, &c_init, &c); // assigns value of elastic constant "c" (c_final)
 
     line_down = 0;
     while (line_down !=21) { // moves down to elastic constant C11
@@ -167,18 +163,17 @@ double *read_output(double obj[]) {
     
     fgets(lines,200,af);
     int throw; //throwaway int
-    sscanf(lines, "%d %lf",throw,&c_11); // assigns value of elastic constant C11
+    sscanf(lines, "%d %lf",&throw,&c_11); // assigns value of elastic constant C11
     
     elast_calc = c_11/c*(2/lat_const); // elastic constant for comparison
-    obj[1] = abs(elast_calc-elast_real)/elast_real*100; // percent error in elastic constant
+    elast = fabs(elast_calc-elast_real)/elast_real*100; // percent error in elastic constant
     
     fclose(af);
     
-    return obj;
 
 }
 
-void phonon_disp() {
+void phonon_disp(double chi_sq) {
     
     // put each phonon.disp file in a different directory?
     FILE *pd, *dft;
@@ -302,7 +297,7 @@ void initialize_population() {
     
     FILE *population;
     
-    population = fopen("population.txt", "w");
+    population = fopen("ga.in", "w");
     
     double frac_perturb = 0.05;
     double rand_frac;
@@ -321,8 +316,6 @@ void initialize_population() {
         for (j=0;j<13;j++) {
             rand_frac = rand() / (double)(RAND_MAX)*(2*frac_perturb) - frac_perturb;
             rand_var[j] = (1-rand_frac)*variables[j];
-
-            fprintf(population, "%lf ",rand_var[j]);
         }
         fprintf(population,"\n");
     }
@@ -332,144 +325,179 @@ void processor_run(char folder[], char inputs[]) {
     
     //initialize variables (make global only if using private copies in this subroutine (OpenMPI))
     double A[3], rho[3], B[3], lambda[2], gamma_3b[2]; //allocates variables, note/recall equilvalences in gammas/rmax_3bs
-    double *obj[3]; // allocates objectives, namely error in a, elastic (multiply these to get single objective) and chi_sq
-    double obj_place[3];
-    double err_a,c_final,elastic, chi_sq; // allocates objectives
+    double err_a, elast, chi_sq; // allocates objectives, namely error in a, elastic (multiply these to get single objective) and chi_sq
     double theta0; //allocates constant (for convenience, -> read/specified once and set)
     char file[200], path[200], c,dc[20];
     int bands;
-    int test;
+    //int test;
     
     // create folder for this instance of gulp run (now done in first copy cell step)
+
     mkdir(folder,S_IRWXU);
     // copy cell, forcefield, etc. into folder
     
-    strcpy(file,"cell");
-    strcpy(path,folder);
-    strcat(path,"/");
-    strcat(path,file); // creates path for new file;
+    const char *gulp_in[2] = {"cell","forcefield"};
+    int i;
     
-    file_copy(file,path,bands);
+    for(i=0;i<2;i++) {      // copies "cell" and "forcefield" into new folder
+        strcpy(file,gulp_in[i]);
+        strcpy(path,folder);
+        strcat(path,"/");
+        strcat(path,file);
+        
+        file_copy(file,path,bands);
+    }
     
-    strcpy(file,"forcefield");
-    strcpy(path,folder);
-    strcat(path,"/");
-    strcat(path,file); // creates path for new file;
-    
-    file_copy(file,path,bands);
+    chdir(folder);   //enter folder
 
-    //enter folder
-    chdir(folder);
+    // scans line for variables
+    sscanf(inputs,"%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",&A[0],&A[1],&A[2],&rho[0],&rho[1],&rho[2],&B[0],&B[1],&B[2],&lambda[0],&lambda[1],&gamma_3b[0],&gamma_3b[1]);
 
-
-    // do any setup for gulp to run in folder
-    //system("npm install gulp"); // for my computer only, different for hpc?, universal implementation possible?
-    // read inputs line into variable (will need dummies or local)
-    modify_input(A,rho,B,lambda,gamma_3b);
+    modify_input(A,rho,B,lambda,gamma_3b); // modifies "forcefield" file
 
     FILE *gulp_input;
 
-    gulp_input = fopen("in.gulp","w");
+    gulp_input = fopen("in.gulp","w"); // create gulp input file
     fprintf(gulp_input, "optim relax conp comp phon nofreq\n");
     fclose(gulp_input);
     
     strcpy(file,"cell");
     strcpy(path,"in.gulp");
     bands = 0;
-
-    file_copy(file,path,bands);
+    file_copy(file,path,bands); // appends "cell" to in.gulp
     
     strcpy(file,"forcefield");
-    file_copy(file,path,bands);
+    file_copy(file,path,bands); // appends "forcefield" to in.gulp
    
     gulp_input = fopen("in.gulp","a");
     fprintf(gulp_input,"dispersion 1 %d \n", 183); // what is 183 here? Better as variable?
     fclose(gulp_input);
 
-
-    strcpy(dc,"G_M");
-    mkdir(dc,S_IRWXU);
-
-    strcpy(file,path);
-    strcpy(path,dc);
-    strcat(path,"/");
-    strcat(path,file); // creates path for new file;
-    bands = 1;
-
-    file_copy(file,path,bands);
-
-    strcpy(dc,"M_K");
-    mkdir(dc,S_IRWXU);
-
-    strcpy(path,dc);
-    strcat(path,"/");
-    strcat(path,file); // creates path for new file;
-    bands = 2;
-    file_copy(file,path,bands);
+    const char *segment[3] = {"G_M","M_K","K_G"};
     
-    strcpy(dc,"K_G");
-    mkdir(dc,S_IRWXU);
+    for(i=0;i<3;i++) {
+        
+        strcpy(dc,segment[i]);
+        mkdir(dc,S_IRWXU); // creates directory for segment
+        
+        strcpy(file,"in.gulp");
+        strcpy(path,dc);
+        strcat(path,"/");
+        strcat(path,file);  // copies in.gulp into new directory
+        bands = 1;
+        
+        file_copy(file,path,bands);
+        
+        chdir(dc); // enter segment directory
+        
+        //gulp < in.gulp > afterfit.out; // runs gulp
+        
+        chdir(".."); // exits new directory
+    }
+    
+    // file collation test
+    err_a = 0.123;
+    elast = 0.055;
+    chi_sq = 1000;
+    
+//    chdir(segment[0]); // arbitrary choice of segment for objectives 1 & 2 (same for all)
+//    read_output(err_a,elast); // extracts objective 1 & 2: error in lattice constant a and error in elastic constant
+//    chdir("..");
+//
+//    phonon_disp(chi_sq);  // may need to modify paths (don't know where phonon_disp() is placed by gulp)
 
-    strcpy(path,dc);
-    strcat(path,"/");
-    strcat(path,file); // creates path for new file;
-    bands = 3;
-    file_copy(file,path,bands);
+    FILE *output;
+
+    output = fopen("ga_line","w");
+
+    fprintf(output,"%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf\n",A[0],A[1],A[2],rho[0],rho[1],rho[2],B[0],B[1],B[2],lambda[0],lambda[1],gamma_3b[0],gamma_3b[1],err_a,elast,chi_sq);
     
-    // run gulp in G_M, M_K, and K_G. Use OpenMP threads? // (LOOK AT ME PLEASE!)
-    // inside loops/threads:
-        // any necessary setup for in.gulp
-            // gulp < in.gulp > afterfit.out
-        // get objectives from afterfit.out -> choose any one afterfit.out from bands
-            // obj = read_output(obj_place);
-                // pretty sure this will work to get the array over. arrays in c are ugly :/ *Especially* when they have to work in parallel
-        // get chi^2 value
-            // phonon_disp();
-                // may need to modify paths (don't know where phonon_disp() is placed by gulp)
-                // 98% positive it will work otherwise
-    // END
-    
+    chdir("..");
+    fclose(output);
     
 }
 
 
 
-int main() {
-// TESTING
-    //read_output();
-    //phonon_disp();
-    //initialize_population();
-    //processor_run("folder","3.4 5.768 3.45 0.35 1.67 2.334 4.345 0.345 0.3454 1.234 1.234 2.11 0.551");
-// END
+int main(int argc, char *argv[]) {
     
     // First, initialize population
-    initialize_population();
+//    initialize_population();
     
-    // Create ga.in file
-    FILE *ga_in;
-    ga_in = fopen("ga.in","w"); // creates first ga.in file (needs to be created outside parallelization loop)
-    fprintf(ga_in,"%d\n", population_num); // first line: number of trials
     
-    int i;
-    
-    for (i=0;i<(population_num),i++) {
-        fprintf(ga_in,"\n"); // creates as many blank spaces in document as there will be lines (needed for parallelization loop)
+    int myid =1; /* My rank */
+    int nprocs = 1; /* Number of processors */
+    int i,j,line; // iterators
+    char c,variables[200],folder[200];
+    char test[200];
+
+    for(j=0;j<iteration_num;j++) {
+
+        MPI_Init(&argc, &argv);
+        MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+        MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+
+
+        FILE *input;
+        input = fopen("ga.in","r");
+        
+        if (input == NULL)
+        {
+            printf("Cannot open file \n");
+            exit(0);
+        }
+
+
+        for (i=myid;i<population_num;i+=nprocs) {
+
+            sprintf(folder,"%d",i);
+
+            line = 0;
+            fgets(test,200,input);
+            rewind(input);
+
+            while (line!=(i+1)) {
+                if((c = fgetc(input)) == '\n') line++;
+
+
+            }
+            fgets(variables,200,input);
+
+            processor_run(folder,variables);
+
+        }
+
+        MPI_Finalize();
+
+        FILE *ga_input,*ga_line;
+        ga_input = fopen("ga.in","w");
+
+        if (ga_input == NULL)
+        {
+            printf("Cannot open file \n");
+            exit(0);
+        }
+
+        fprintf(ga_input,"%d\n",population_num);
+
+        for (i=0;i<population_num;i++) {
+            sprintf(folder,"%d",i);
+            chdir(folder);
+
+            ga_line = fopen("ga_line","r");
+            fgets(variables,200,ga_line);
+            fputs(variables,ga_input);
+
+            fclose(ga_line);
+
+            chdir("..");
+        }
+
+
+
+        // ./ga.c
+        // Change ga.c output to ga.in -> modify if necessary
     }
-    
-    
-    // parallelize over processor_run
-    // MPI assignment loop from 0 to population_num - 1
-        // read line by file -> assign line to array
-        // assign folder name
-            // ex: run_1, run_2, etc.
-        // call processor_run(run_x,array)
-    // end parallelization
-    // consoladate all lines into an input for ga.c (Ankit's file)
-        // ^^ Need help figuring out how to do this off a parallel script. Can't figure out a solution that doesn't lead to race conditions
-        // any attempt to write directly in the loop risks the overwriting each other. But we can't allocate one big 2D array/array of pointers because they aren't guaranteed to be one consistent size. We may need to use padding to change that to make this work, but I wanted to see if you guys had any ideas.
-    // run ga.c
-    // check if conditions are satisfied (I think ga.c does this?)
-    // send output back to MPI for a second loop
-    
+
     return 0;
 }
