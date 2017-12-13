@@ -8,6 +8,22 @@
 #include <unistd.h>
 #include "mpi.h"
 
+// Notes:
+    // lines of code that call and manage gulp are commented out. 
+    // MPI implementation tested and confirmed operational
+    // all code up to gulp implementation confirmed functional
+        // exception: odd error occurs with the initialization function for ga.c (initialize_population())
+            // the creation of ga.in occurs as normal, but the file then reads only ??? for all characters when opened
+            // with fopens in the next call. Oddly, this does not occur if the exact same file is first generated outside
+            // the program, and then called independently.
+                // Until this issue is resolved, an independent script for generating the first ga.in file is included 
+                    //(identical to function in this file)
+    // ga.c calls and potential handling not implemented at this time
+
+
+
+
+
 
 
 int population_num = 5;
