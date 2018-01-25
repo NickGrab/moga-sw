@@ -518,9 +518,9 @@ int main(int argc, char *argv[]) {
 
                 chdir("..");
                 // code that removes directories files generated above
-//                char rm_dir[200];
-//                sprintf(rm_dir,"rm -rf %s", folder);
-//                system(rm_dir);
+                char rm_dir[200];
+                sprintf(rm_dir,"rm -rf %s", folder);
+                system(rm_dir);
             }
             fclose(ga_input);
         }
