@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include "mpi.h"
 
-void file_copy(char file[], char file_copy[], int bands) { // creates a copy of a file
+void file_copy(char file[], char file_copy[]) { // creates a copy of a file
     FILE *in_stream, *out_stream;
     char c;
     
@@ -33,21 +33,21 @@ void file_copy(char file[], char file_copy[], int bands) { // creates a copy of 
         c = fgetc(in_stream);
     }
     
-    if (bands == 1) { // I know this method of setup is dumb, but it was a lot easier than modifying my previous method.
-        fprintf(out_stream,"dispersion 1 %d \n", 183); // what is 183 here? Better as variable?
-        fprintf(out_stream,"0.0 0.0 0.0 to 0.5 0.0 0.0\n");
-    } else if (bands == 2) {
-        fprintf(out_stream,"dispersion 1 %d \n", 106); // what is 183 here? Better as variable?
-        fprintf(out_stream,"0.5 0.0 0.0 to 0.33333 0.33333 0.0\n");
-    } else if (bands == 3) {
-        fprintf(out_stream,"dispersion 1 %d \n", 211); // what is 183 here? Better as variable?
-        fprintf(out_stream,"0.33333 0.33333 0.0 to 0.0 0.0 0.0\n");
-    }
-    
-    if (bands > 0) {
-        fprintf(out_stream,"output phon phonon\n");
-        fprintf(out_stream,"shrink 5 5 5\n\n");
-    }
+//    if (bands == 1) { // I know this method of setup is dumb, but it was a lot easier than modifying my previous method.
+//        fprintf(out_stream,"dispersion 1 %d \n", 183); // what is 183 here? Better as variable?
+//        fprintf(out_stream,"0.0 0.0 0.0 to 0.5 0.0 0.0\n");
+//    } else if (bands == 2) {
+//        fprintf(out_stream,"dispersion 1 %d \n", 106); // what is 183 here? Better as variable?
+//        fprintf(out_stream,"0.5 0.0 0.0 to 0.33333 0.33333 0.0\n");
+//    } else if (bands == 3) {
+//        fprintf(out_stream,"dispersion 1 %d \n", 211); // what is 183 here? Better as variable?
+//        fprintf(out_stream,"0.33333 0.33333 0.0 to 0.0 0.0 0.0\n");
+//    }
+//
+//    if (bands > 0) {
+//        fprintf(out_stream,"output phon phonon\n");
+//        fprintf(out_stream,"shrink 5 5 5\n\n");
+//    }
     
     fclose(in_stream);
     fclose(out_stream);
@@ -135,7 +135,9 @@ void read_output(double* err_a,double* elast) {
         }
     }
     
-    int line_down;
+    
+    
+    int line_down = 0;
     while (line_down !=5) {
         if((ch = fgetc(af)) == '\n') line_down++; // moves to constant "a"
     }
@@ -161,7 +163,7 @@ void read_output(double* err_a,double* elast) {
     fgets(lines,200,af);
     sscanf(lines, "%*d %lf",&c_11); // assigns value of elastic constant C11
     
-    elast_calc = c_11/c*(2/lat_const); // elastic constant for comparison
+    elast_calc = c_11*c/(lat_const/2); // elastic constant for comparison
     *elast = fabs(elast_calc-elast_real)/elast_real*100; // percent error in elastic constant
     
     fclose(af);
@@ -179,7 +181,13 @@ double phonon_disp() {
     char c_phonon,c_band; // used for return counts for document navigation
     int j, j_comp, k, l_phonon = 0, l_band = 0; // loop counters
     
-    int weights[9] = {10,10,10,3,3,3,1,1,1}; // weights for the chi^2 fit
+    double weights[9] = {1,1,1,.3,.3,.3,.1,.1,.1};// weights for the chi^2 fit
+    
+    double sum_sqr_weights = 0.0;
+    int i;
+    for(i=0;i<9;i++) sum_sqr_weights += weights[i];
+    for(i=0;i<9;i++) weights[i] /= sum_sqr_weights;
+    
     double conv_x = 1000; // reciprical position conversion rate
     double conv_y = 33.35641; // frequencies conversion rate (THz) -> 1/cm
     double phonon_shift[3] = {0,183,289};
@@ -203,10 +211,8 @@ double phonon_disp() {
     
     for (k=0;k<3;k++) { // loops over segments
         
-        //printf("The value of k is : %d\n",k); TEST PRINT
-        
         phonon = fopen(phonon_file[k],"r"); // reads from 'current segment' (G-M, M-K, K-G)
-
+        
         if (phonon == NULL)
         {
             printf("Cannot open file %s \n", phonon_file[k]); // null pointer handler
@@ -258,14 +264,6 @@ double phonon_disp() {
                 }
                 
                 
-//                if (k>0) {
-//                    printf("\n%f %f %f \n", old_x_phonon, x_band*conv_x, new_x_phonon);
-//                    printf("%f %f %f \n\n", old_y_phonon, y_band*conv_y, new_y_phonon);
-////                    printf("%f\n", y_interp_phonon); // TEST PRINTS (DELETE US)
-//                }
-
-                
-                
                 if (strncmp(lines_band,"\n",200) == 0) { // will end loop if band has reached last line of segment (empty line)
                     break;
                 }
@@ -282,8 +280,10 @@ double phonon_disp() {
                 
             }
             
+            
             rewind(band); // rewinds band.dat stream to beginning
             
+
             l_band = 0;
             while (l_band != band_offset) {
                 if((c_band = fgetc(band)) == '\n') l_band++; // skips intro block (necessary to avoid weird catches/ensure consistency)
@@ -297,19 +297,22 @@ double phonon_disp() {
                 if (strncmp(lines_band,lines_band_ph,200)==0) {
                     j_comp++;
                 }
-            } while (j_comp != j); // moves to beginning of next band (marked by double space)
-            
+            } while (j_comp != j+1); // moves to beginning of next band (marked by double space)
             
             l_band = 0;
+            
             while (l_band != k*(band_segm_lngth+1)) {
                 if((c_band = fgetc(band)) == '\n') l_band++; // moves down to first line of current segment in current band of band file
+                if (feof(band)) break;
+
             }
+            
         }
         
         fclose(phonon); // closes current phonon file (in preparation of opening of next phonon file
 
     }
-    //chi_sq = chi_sq/567;
+    chi_sq = chi_sq/567;
     return chi_sq;
 
 }
@@ -320,13 +323,13 @@ void initialize_population(int population_num) {
     
     population = fopen("ga.in", "w");
     
-    double frac_perturb = 0.005;
+    double frac_perturb = 0.05;
     double rand_frac;
     
     fprintf(population, "%d\n", population_num);
     
     //initial guesses for the 3 As, 3 rhos, 3 Bs, 2 lambdas, and 2 independent gammas respectively modify manually as necessary
-    double variables[13] = {5,5,5,0.5,0.5,0.5,20,20,20,15,15,1,1};
+    double variables[13] = {1,7,5,0.5,0.4,0.6,39,9,19,12,29,1,2};
     double rand_var[13]; // array for holding random perturbations of variables
     
     int i,j,k;
@@ -345,7 +348,7 @@ void initialize_population(int population_num) {
     fclose(population);
 }
 
-void processor_run(char folder[], char inputs[]) {
+void processor_run(int iter_num, char folder[], char inputs[]) {
     
     //initialize variables (make global only if using private copies in this subroutine (OpenMPI))
     double A[3], rho[3], B[3], lambda[2], gamma_3b[2]; //allocates variables, note/recall equilvalences in gammas/rmax_3bs
@@ -355,7 +358,10 @@ void processor_run(char folder[], char inputs[]) {
 
     // create folder for this instance of gulp run (now done in first copy cell step)
 
-    mkdir(folder,S_IRWXU);
+   //printf("I am processor = %d and I will create this %s folder\n", myid + 1, folder);
+
+    //if (iter_num == 0)
+    	mkdir(folder,S_IRWXU);
     // copy cell, forcefield, etc. into folder
     
     const char *gulp_in[2] = {"cell","forcefield"};
@@ -367,7 +373,7 @@ void processor_run(char folder[], char inputs[]) {
         strcat(path,"/");
         strcat(path,file);
         
-        file_copy(file,path,bands);
+        file_copy(file,path);
     }
     
     chdir(folder);   //enter folder
@@ -385,11 +391,10 @@ void processor_run(char folder[], char inputs[]) {
     
     strcpy(file,"cell");
     strcpy(path,"in.gulp");
-    bands = 0;
-    file_copy(file,path,bands); // appends "cell" to in.gulp
+    file_copy(file,path); // appends "cell" to in.gulp
     
     strcpy(file,"forcefield");
-    file_copy(file,path,bands); // appends "forcefield" to in.gulp
+    file_copy(file,path); // appends "forcefield" to in.gulp
    
     gulp_input = fopen("in.gulp","a");
     // 183 105 211
@@ -406,9 +411,27 @@ void processor_run(char folder[], char inputs[]) {
         strcpy(path,dc);
         strcat(path,"/");
         strcat(path,file);  // copies in.gulp into new directory
-        bands = i+1;
         
-        file_copy(file,path,bands);
+        file_copy(file,path);
+        
+        FILE *seg_in;
+        seg_in = fopen(path,"a");
+        
+        if (i == 0) { // I know this method of setup is dumb, but it was a lot easier than modifying my previous method.
+            fprintf(seg_in,"dispersion 1 %d \n", 183); // what is 183 here? Better as variable?
+            fprintf(seg_in,"0.0 0.0 0.0 to 0.5 0.0 0.0\n");
+        } else if (i == 1) {
+            fprintf(seg_in,"dispersion 1 %d \n", 106); // what is 183 here? Better as variable?
+            fprintf(seg_in,"0.5 0.0 0.0 to 0.33333 0.33333 0.0\n");
+        } else if (i == 2) {
+            fprintf(seg_in,"dispersion 1 %d \n", 211); // what is 183 here? Better as variable?
+            fprintf(seg_in,"0.33333 0.33333 0.0 to 0.0 0.0 0.0\n");
+        }
+        
+        fprintf(seg_in,"output phon phonon\n");
+        fprintf(seg_in,"shrink 5 5 5\n\n");
+        
+        fclose(seg_in);
         
         chdir(dc); // enter segment directory
         
@@ -419,6 +442,9 @@ void processor_run(char folder[], char inputs[]) {
     
     chdir(segment[0]); // arbitrary choice of segment for objectives 1 & 2 (same for all)
     read_output(&err_a,&elast); // extracts objective 1 & 2: error in lattice constant a and error in elastic constant
+    
+    //printf("error_a: %lf\n", err_a);
+    //printf("elast: %lf\n", elast);
     
     chdir(".."); // moves back to 'folder' directory to read all segments for phonon dispersion chi squared calculation
     chi_sq = phonon_disp();  // may need to modify paths (don't know where phonon_disp() is placed by gulp)
@@ -441,8 +467,8 @@ int main(int argc, char *argv[]) {
     
     int myid; /* My rank */
     int nprocs; /* Number of processors */
-    int iteration_num = 1; // number of training iterations
-    int population_num = 5; // population size for ga.in training
+    int iteration_num = 5; // number of training iterations
+    int population_num = 10; // population size for ga.in training
     int initialized;
 
     initialize_population(population_num); // initializes population
@@ -450,9 +476,9 @@ int main(int argc, char *argv[]) {
     
     int i,j,line; // iterators
     char c,variables[200],folder[200];
-    char test[200];
-    
+
     for(j=0;j<iteration_num;j++) { // recursively optimizes for number of iterations specified
+
 
         MPI_Initialized(&initialized);
         if (!initialized) {
@@ -488,14 +514,15 @@ int main(int argc, char *argv[]) {
             
             // end
 
-            processor_run(folder,variables); // runs analysis on line input
+            processor_run(j, folder,variables); // runs analysis on line input
 
         }
         fclose(input);
 
+
+        
         if (myid == 0) {
             FILE *ga_input,*ga_line;
-            //sprintf(test,"ga_%d.in", j);
             ga_input = fopen("ga.in","w");
 
             if (ga_input == NULL)
@@ -523,11 +550,17 @@ int main(int argc, char *argv[]) {
                 system(rm_dir);
             }
             fclose(ga_input);
-        }
+        
 
-        // ./ga.c
-        // Work ga.c output
-        //file_copy("ga.in","ga.out",)
+            char cmdexec1[200];
+        sprintf(cmdexec1,"./ga ga.in %d", j+1);
+        system(cmdexec1);
+            char cmdexec[200];
+        sprintf(cmdexec, "cp value.d ga.in");
+        system(cmdexec);
+        }
+	printf("Iteration = %d done \n", j);
+    MPI_Barrier(MPI_COMM_WORLD);
     }
     MPI_Finalize();
 
