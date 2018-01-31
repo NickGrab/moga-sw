@@ -467,8 +467,8 @@ int main(int argc, char *argv[]) {
     
     int myid; /* My rank */
     int nprocs; /* Number of processors */
-    int iteration_num = 5; // number of training iterations
-    int population_num = 10; // population size for ga.in training
+    int iteration_num = 10; // number of training iterations
+    int population_num = 120; // population size for ga.in training
     int initialized;
 
     initialize_population(population_num); // initializes population
@@ -520,7 +520,8 @@ int main(int argc, char *argv[]) {
         fclose(input);
 
 
-        
+	MPI_Barrier(MPI_COMM_WORLD);
+
         if (myid == 0) {
             FILE *ga_input,*ga_line;
             ga_input = fopen("ga.in","w");
