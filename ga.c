@@ -3,13 +3,15 @@
 #include <math.h>
 
 time_t t;
-#define N 120
+#define N 200
 #define N_MAX 1
 int nvar=16;
-double sigmashare=0.198;
+double sigmashare=0.2;
 int alpha=2;
 double crossover_P=0.9;
 double mutation_P=0.1;
+
+double fraction = 0.1;
 
 int readinput(char fileName[], double x[][N],double y1[],double y2[], double y3[]);
 int fitness(int p[],double a1[],double a2[], double a3[], int front[][N+1]);
@@ -35,43 +37,43 @@ int main(int argc, char *argv[]){
 	for (i=0;i<nvar;i++){
 
      		if (i == 0){
-     			x0[i][0]= 1*0.95; x0[i][1]= 1*1.05;
+     			x0[i][0]= 1*(1 - fraction); x0[i][1]= 1*(1 + fraction);
       		}
       		else if (i == 1){
-        		x0[i][0] = 7*0.95; x0[i][1] = 7*1.05;
+        		x0[i][0] = 7*(1 - fraction); x0[i][1] = 7*(1 + fraction);
       		}
       		else if (i == 2){
-			x0[i][0] = 5*0.95; x0[i][1] = 5*1.05;
+			x0[i][0] = 5*(1 - fraction); x0[i][1] = 5*(1 + fraction);
       		}
 		else if (i == 3){
-			x0[i][0] = 0.5*0.95; x0[i][1] = 0.5*1.05;
+			x0[i][0] = 0.5*(1 - fraction); x0[i][1] = 0.5*(1 + fraction);
 		}
 		else if (i == 4){
-			x0[i][0] = 0.4*0.95; x0[i][1] = 0.4*1.05;
+			x0[i][0] = 0.5*(1 - fraction); x0[i][1] = 0.5*(1 + fraction);
 		}
 		else if (i == 5){
-			x0[i][0] = 0.6*0.95; x0[i][1] = 0.6*1.05;
+			x0[i][0] = 0.5*(1 - fraction); x0[i][1] = 0.5*(1 + fraction);
 		}
 		else if (i == 6){
-			x0[i][0] = 39.0*0.95; x0[i][1] = 39.0*1.05;
+			x0[i][0] = 20.0*(1 - fraction); x0[i][1] = 20.0*(1 + fraction);
 		}
 		else if (i == 7){
-			x0[i][0] = 9.0*0.95; x0[i][1] = 9.0*1.05;
+			x0[i][0] = 20.0*(1 - fraction); x0[i][1] = 20.0*(1 + fraction);
 		}
 		else if (i == 8){
-			x0[i][0] = 19.0*0.95; x0[i][1] = 19.0*1.05;
+			x0[i][0] = 20.0*(1 - fraction); x0[i][1] = 20.0*(1 + fraction);
 		}
 		else if (i == 9){
-                        x0[i][0] = 12.0*0.95; x0[i][1] = 12.0*1.05;
+                        x0[i][0] = 15.0*(1 - fraction); x0[i][1] = 15.0*(1 + fraction);
                 }
 		else if (i == 10){
-			x0[i][0] = 29.0*0.95; x0[i][1] = 29.0*1.05;
+			x0[i][0] = 15.0*(1 - fraction); x0[i][1] = 15.0*(1 + fraction);
 		}
 		else if (i == 11){
-			x0[i][0] = 1.0*0.95; x0[i][1] = 1.0*1.05;
+			x0[i][0] = 1.0*(1 - fraction); x0[i][1] = 1.0*(1 + fraction);
 		}
 		else if (i == 12){
-			x0[i][0] = 2.0*0.95; x0[i][1] = 2.0*1.05;
+			x0[i][0] = 1.0*(1 - fraction); x0[i][1] = 1.0*(1 + fraction);
 		}
 	}
 	fprintf(stdout, "Reading File \n"); 
