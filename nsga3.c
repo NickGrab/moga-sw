@@ -44,7 +44,7 @@ int associate(double norm_obj[nobj][2*N],double hyperplane[nobj][size_hyperplane
 int niching(int pop_filled,int front[2*N],int nearest_pointer[2*N], int new_pop_point[N], double nearest_distance[2*N]);
 
 /* creates output files */
-int write_pop_file(char fileName[],double x[][N], double y[][N], int type);
+int write_pop_file(char fileName[],char allName[],double x[][N], double y[][N], int type);
 
 /* roulette selection for reproduction */
 int select_crossover(int r[],double var_parent[nvar][N],double var_child[nvar][N]);
@@ -60,6 +60,7 @@ void transpose(double [][nobj], double [][nobj], double, double inverse[nobj][no
 int main(int argc, char *argv[]) {
     int i,j;
     char old_input[] = "ga_old.in"; // stores previous generation
+    char all_inputs[] = "ga_all.in"; // stores all generations
     char new_input[] = "ga.in"; // stores current generation
     char var_input[] = "var.in"; // stores variables
     char hyper[] = "hyperplane.in"; // stores hyperplane
@@ -73,7 +74,7 @@ int main(int argc, char *argv[]) {
         create_hyperplane();
     }
 
-    FILE *hyper_input;
+    FILE *hyper_input,*create;
     char point[9];
     hyper_input = fopen("hyperplane.in","r");
     fgets(point,9,hyper_input);
@@ -242,7 +243,9 @@ int main(int argc, char *argv[]) {
         printf("\n");
     }
     /*  SAVES PARENT POPULATION  */
-    write_pop_file(old_input,var_parent,obj_parent,1);
+    create = fopen(all_inputs,"w");
+    fclose(create);
+    write_pop_file(old_input,all_inputs,var_parent,obj_parent,1);
     /* generates child population via crossover and mutation */
     select_crossover(rank,var_parent,var_child);
     printf("\nChild Post-Crossover:\n");
@@ -261,7 +264,7 @@ int main(int argc, char *argv[]) {
         printf("\n");
     }
     /* Saves child population */
-    write_pop_file(new_input,var_child,empty_obj,0);
+    write_pop_file(new_input,all_inputs,var_child,empty_obj,0);
 
     return(0);
 }
@@ -457,6 +460,7 @@ int associate(double norm_obj[nobj][2*N],double hyperplane[nobj][size_hyperplane
 
     /* Association */
     for(i=0;i<2*N;i++) { // loop over population
+      printf("In loop for population index %d\n", i);
         for(j=0;j<size_hyperplane;j++) { // loop over hyperplane 
             for(k=0;k<nobj;k++) { // loop over objectives
                 two_norm += hyperplane[k][j]*hyperplane[k][j]; // accumulate for calculation of two_norm
@@ -617,13 +621,15 @@ int select_crossover(int r[],double var_parent[nvar][N],double var_child[nvar][N
 	double rsum=0,rmax=0,rand_num,rprob[N],raprob[N];
 
 	for (i=0;i<N;i++) {
-        rsum+=r[i]+1; // sums up ranks (+1 accounts for first rank = 0)
-        if(rmax<r[i]) rmax = r[i]; // finds latest rank included in population
+	if(rmax<(r[i]+1)) rmax = r[i]+1; // finds latest rank included in population
+	}
+	for (i=0;i<N;i++) {
+        rsum+=(rmax-r[i]-1); // sums up ranks (+1 accounts for first rank = 0)
         for(j=0;j<nvar;j++) var_child[j][i] = 0.0; // initializes var_child
 
     }
     
-	for(i=0;i<N;i++)  rprob[i]=(rmax-r[i])/rsum; // lower ranks have higher probability of acceptance
+	for(i=0;i<N;i++)  rprob[i]=(rmax-r[i]-1)/rsum; // lower ranks have higher probability of acceptance
 	raprob[0]=rprob[0];
 	for(i=1;i<N;i++) raprob[i]=raprob[i-1]+rprob[i];
 
@@ -751,22 +757,26 @@ int read_pop_input(char fileName[],double x[][N],double y[][N]){
 	return(0);
 }   
 
-int write_pop_file(char fileName[],double x[][N], double y[][N], int type) {
-    FILE *output; 
+int write_pop_file(char fileName[],char allName[],double x[][N], double y[][N], int type) {
+    FILE *output,*all_out; 
     int i, j;
     output = fopen(fileName,"w"); // creates output file, overriding previous file if applicable
-    if(type==1) fprintf(output,"%d\n",it_num);
-    if(type==0) fprintf(output,"%d\n",it_num+1);
+    all_out = fopen(allName,"a");
+    fprintf(output,"%d\n",N);
+    if(type==1) fprintf(all_out,"%d\n",N);
     for(i=0;i<N;i++) {
         for(j=0;j<nvar;j++) {
             fprintf(output,"%f ",x[j][i]); // prints variables in a line
+            if(type==1) fprintf(all_out,"%f ",x[j][i]);
         }
         if(type==1) {
             for(j=0;j<nobj;j++) {
                 fprintf(output,"%f ",y[j][i]); // prints objectives in a line for parent only
+                fprintf(all_out,"%f ",y[j][i]);
             }
         }
         fprintf(output,"\n"); // line break
+        if(type==1) fprintf(all_out,"\n");
     }
     fclose(output);
     return(0);
