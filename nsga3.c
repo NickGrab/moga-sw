@@ -15,6 +15,7 @@ double mutation_rate = 0.02; // rate of mutation
 int nDivision=10; // number of divisions for generating hyperplane
 int size_hyperplane = 0;
 int it_num=-1;
+int suppress_output = 1;
 struct bound {
     double x, y; // for reading in lower and upper bounds
 };
@@ -122,125 +123,156 @@ int main(int argc, char *argv[]) {
             for(j=0;j<nvar;j++) var_pop[j][N+i] = var_new[j][i];
             for(j=0;j<nobj;j++) obj_pop[j][N+i] = obj_new[j][i];
         }
-        printf("\nVariables and Objectives: \n");
-        for(i=0;i<2*N;i++) {
-            for(j=0;j<nvar;j++) {
-                printf("%lf ",var_pop[j][i]);
-            }
-            printf(" | ");
-            for(j=0;j<nobj;j++) {
-                printf("%lf ",obj_pop[j][i]);
-            }
-            printf("\n");
-        }
-        printf("\n");
-
-        non_dom_sort(2*N,obj_pop,rank2,dom_by_combined); // sorts population into ranks
-        printf("\nRank:\n");
-        for(i=0;i<2*N;i++) {
-            printf("%d ",rank2[i]);
-        }
-        printf("\n\nDominated By:\n");
-        for(i=0;i<2*N;i++) {
-            for(j=0;j<2*N;j++) {
-                printf("%d ",dom_by_combined[i][j]);
-            }
-            printf("\n");
-        }
-        /* selects population according to NSGA-III */
-        current_pop_size = select_pop(rank2,point_parent,dom_by_combined,front); // populations with ranks until > N
-        printf("\nSelected Population:\n");
-        printf("Current Population Size: %d\n",current_pop_size);
-        printf("\nNew Population Pointers:\n");
-        for(i=0;i<N;i++) {
-            printf("%d ",point_parent[i]);
-        }
-        printf("\n\nFront:\n");
-        for(i=0;i<2*N;i++) {
-            printf("%d ",front[i]);
-        }
-        printf("\n");
-        if (current_pop_size != N) {
-            normalize(obj_pop,norm_obj_pop);
-            printf("\nNormalized Objectives\n");
-            for(i=0;i<nobj;i++) {
-                for(j=0;j<2*N;j++) {
-                    printf("%lf ",norm_obj_pop[i][j]);
+        if(suppress_output==0) {
+            printf("\nVariables and Objectives: \n");
+            for(i=0;i<2*N;i++) {
+                for(j=0;j<nvar;j++) {
+                    printf("%lf ",var_pop[j][i]);
+                }
+                printf(" | ");
+                for(j=0;j<nobj;j++) {
+                    printf("%lf ",obj_pop[j][i]);
                 }
                 printf("\n");
             }
             printf("\n");
-            associate(norm_obj_pop,hyperplane,hyper_pointer,hyper_distance);
-            printf("ID#, Front, Nearest Pointers, and Distance:\n");
+        }
+        
+        non_dom_sort(2*N,obj_pop,rank2,dom_by_combined); // sorts population into ranks
+        if(suppress_output==0) {
+            printf("\nRank:\n");
             for(i=0;i<2*N;i++) {
-                printf("%d %d %d %lf\n",i,front[i],hyper_pointer[i],hyper_distance[i]);
+                printf("%d ",rank2[i]);
             }
-            printf("\n");
-            niching(current_pop_size,front,hyper_pointer,point_parent,hyper_distance);
-            printf("Filled Population Pointers:\n");
+            printf("\n\nDominated By:\n");
+            for(i=0;i<2*N;i++) {
+                for(j=0;j<2*N;j++) {
+                    printf("%d ",dom_by_combined[i][j]);
+                }
+                printf("\n");
+            }
+        }
+        
+        /* selects population according to NSGA-III */
+        current_pop_size = select_pop(rank2,point_parent,dom_by_combined,front); // populations with ranks until > N
+        if(suppress_output==0) {
+            printf("\nSelected Population:\n");
+            printf("Current Population Size: %d\n",current_pop_size);
+            printf("\nNew Population Pointers:\n");
             for(i=0;i<N;i++) {
                 printf("%d ",point_parent[i]);
             }
+            printf("\n\nFront:\n");
+            for(i=0;i<2*N;i++) {
+                printf("%d ",front[i]);
+            }
             printf("\n");
+        }
+        
+        if (current_pop_size != N) {
+            normalize(obj_pop,norm_obj_pop);
+            if(suppress_output==0) {
+                printf("\nNormalized Objectives\n");
+                for(i=0;i<nobj;i++) {
+                    for(j=0;j<2*N;j++) {
+                        printf("%lf ",norm_obj_pop[i][j]);
+                    }
+                    printf("\n");
+                }
+                printf("\n");
+                printf("\nNormalized Objectives\n");
+                for(i=0;i<nobj;i++) {
+                    for(j=0;j<2*N;j++) {
+                        printf("%lf ",norm_obj_pop[i][j]);
+                    }
+                    printf("\n");
+                }
+                printf("\n");
+            }
+
+            associate(norm_obj_pop,hyperplane,hyper_pointer,hyper_distance);
+            if(suppress_output==0) {
+                printf("ID#, Front, Nearest Pointers, and Distance:\n");
+                for(i=0;i<2*N;i++) {
+                    printf("%d %d %d %lf\n",i,front[i],hyper_pointer[i],hyper_distance[i]);
+                }
+                printf("\n");
+            }
+            
+            niching(current_pop_size,front,hyper_pointer,point_parent,hyper_distance);
+            if(suppress_output==0) {
+                printf("Filled Population Pointers:\n");
+                for(i=0;i<N;i++) {
+                    printf("%d ",point_parent[i]);
+                }
+                printf("\n");
+            }     
         }
 
         /* translates pointer to selected population into arrays for variable and rank */
-        printf("\nParent Variables and Objectives:\n");
-        for(i=0;i<N;i++) {
-            for(j=0;j<nvar;j++) {
-                var_parent[j][i] = var_pop[j][point_parent[i]];
-                printf("%lf ",var_parent[j][i]);
+        if(suppress_output==0) {
+            printf("\nParent Variables and Objectives:\n");
+            for(i=0;i<N;i++) {
+                for(j=0;j<nvar;j++) {
+                    var_parent[j][i] = var_pop[j][point_parent[i]];
+                    printf("%lf ",var_parent[j][i]);
+                }
+                printf(" | ");
+                for(j=0;j<nobj;j++) {
+                    obj_parent[j][i] = obj_pop[j][point_parent[i]];
+                    printf("%lf ",obj_parent[j][i]);
+                }
+                rank[i] = rank2[point_parent[i]];
+                printf("\n");
             }
-            printf(" | ");
-            for(j=0;j<nobj;j++) {
-                obj_parent[j][i] = obj_pop[j][point_parent[i]];
-                printf("%lf ",obj_parent[j][i]);
-            }
-            rank[i] = rank2[point_parent[i]];
             printf("\n");
         }
-        printf("\n");
 
     } else {
         read_pop_input(new_input,var_new,obj_new); 
-        printf("\nVariables and Objectives: \n");
-        for(i=0;i<N;i++) {
-            for(j=0;j<nvar;j++) {
-                printf("%lf ",var_new[j][i]);
-            }
-            printf(" | ");
-            for(j=0;j<nobj;j++) {
-                printf("%lf ",obj_new[j][i]);
+        if(suppress_output==0) {
+            printf("\nVariables and Objectives: \n");
+            for(i=0;i<N;i++) {
+                for(j=0;j<nvar;j++) {
+                    printf("%lf ",var_new[j][i]);
+                }
+                printf(" | ");
+                for(j=0;j<nobj;j++) {
+                    printf("%lf ",obj_new[j][i]);
+                }
+                printf("\n");
             }
             printf("\n");
         }
-        printf("\n");
+        
         non_dom_sort(N,obj_new,rank,dom_by_single); // sorts population into ranks
-        printf("\nRank:\n");
-        for(i=0;i<N;i++) {
-            printf("%d ",rank[i]);
-        }
-        printf("\n\nDominated By:\n");
-        for(i=0;i<N;i++) {
-            for(j=0;j<N;j++) {
-                printf("%d ",dom_by_single[i][j]);
+        if(suppress_output==0) {
+            printf("\nRank:\n");
+            for(i=0;i<N;i++) {
+                printf("%d ",rank[i]);
+            }
+            printf("\n\nDominated By:\n");
+            for(i=0;i<N;i++) {
+                for(j=0;j<N;j++) {
+                    printf("%d ",dom_by_single[i][j]);
+                }
+                printf("\n");
+            }
+            printf("\nParent Variables and Objectives:\n");
+            for(i=0;i<N;i++) {
+                for(j=0;j<nvar;j++) {
+                    var_parent[j][i] = var_new[j][i]; //copies var_new to var_parent for consistency
+                    printf("%lf ",var_parent[j][i]); 
+                }
+                printf(" | ");
+                for(j=0;j<nobj;j++) {
+                    obj_parent[j][i] = obj_new[j][i];
+                    printf("%lf ",obj_parent[j][i]);
+                }
+                printf("\n");
             }
             printf("\n");
         }
-        printf("\nParent Variables and Objectives:\n");
-        for(i=0;i<N;i++) {
-            for(j=0;j<nvar;j++) {
-                var_parent[j][i] = var_new[j][i]; //copies var_new to var_parent for consistency
-                printf("%lf ",var_parent[j][i]); 
-            }
-            printf(" | ");
-            for(j=0;j<nobj;j++) {
-                obj_parent[j][i] = obj_new[j][i];
-                printf("%lf ",obj_parent[j][i]);
-            }
-            printf("\n");
-        }
-        printf("\n");
     }
     /*  SAVES PARENT POPULATION  */
     create = fopen(all_inputs,"w");
@@ -248,24 +280,27 @@ int main(int argc, char *argv[]) {
     write_pop_file(old_input,all_inputs,var_parent,obj_parent,1);
     /* generates child population via crossover and mutation */
     select_crossover(rank,var_parent,var_child);
-    printf("\nChild Post-Crossover:\n");
-    for(i=0;i<N;i++) {
-        for(j=0;j<nvar;j++) {
-            printf("%lf ",var_child[j][i]);
+    if(suppress_output==0) {
+           printf("\nChild Post-Crossover:\n");
+        for(i=0;i<N;i++) {
+            for(j=0;j<nvar;j++) {
+                printf("%lf ",var_child[j][i]);
+            }
+            printf("\n");
         }
-        printf("\n");
+        select_mutants(var_parent,var_child,lower_upper);
+        printf("\nFinal Child Population:\n");
+        for(i=0;i<N;i++) {
+            for(j=0;j<nvar;j++) {
+                printf("%lf ",var_child[j][i]);
+            }
+            printf("\n");
+        } 
     }
-    select_mutants(var_parent,var_child,lower_upper);
-    printf("\nFinal Child Population:\n");
-    for(i=0;i<N;i++) {
-        for(j=0;j<nvar;j++) {
-            printf("%lf ",var_child[j][i]);
-        }
-        printf("\n");
-    }
+    
     /* Saves child population */
     write_pop_file(new_input,all_inputs,var_child,empty_obj,0);
-
+    
     return(0);
 }
 
@@ -720,6 +755,7 @@ int read_var_input(char filename[],struct bound bounds[]) {
     for(i=0;i<nvar;i++) {
         fscanf(input,"%lf",&bounds[i].y);
     }
+    fscanf(input,"%lf",&suppress_output);
 
     fclose(input);
     return(0);
