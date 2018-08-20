@@ -11,7 +11,7 @@ int alpha=2;
 double crossover_P=0.9;
 double mutation_P=0.1;
 
-double fraction = 0.05;
+double fraction = 0.20;
 
 int readinput(char fileName[], double x[][N],double y1[],double y2[], double y3[]);
 int fitness(int p[],double a1[],double a2[], double a3[], int front[][N+1]);

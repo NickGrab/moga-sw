@@ -157,16 +157,19 @@ void read_output(double* err_a,double* elast) {
     }
     fgets(lines,200,af); // reads line in
     int len = strlen(lines);
-    double err_dum; // dummy error
+    double err_dum, err_dum1; // dummy error
     printf("Extracting err_a\n");
     sscanf(lines, "%s %lf %lf %lf %s %lf", tempStr1, &temp1, &temp2, &temp3, tempStr2, &err_dum); // assigns value of percent error in a
-    *err_a = err_dum;
+    fgets(lines,200,af); // reads line in
+    sscanf(lines, "%s %lf %lf %lf %s %lf", tempStr1, &temp1, &temp2, &temp3, tempStr2, &err_dum1);
+    *err_a = sqrt(pow(err_dum,2) + pow(err_dum1,2));
+
     printf("Extracting err_a done\n");    
 
-    line_down = 0;
+    /*line_down = 0;
     while (line_down !=1) { // moves down to elastic constant "c" (for elastic fit)
         if((ch = fgetc(af)) == '\n') line_down++;
-    }
+    }*/
     
     fgets(lines,200,af);
 
@@ -434,7 +437,7 @@ void initialize_population(int population_num) {
     
     population = fopen("ga.in", "w");
     
-    double frac_perturb = 0.05;
+    double frac_perturb = 0.20;
     double rand_frac;
     
     fprintf(population, "%d\n", population_num);
@@ -569,7 +572,7 @@ int main(int argc, char *argv[]) {
     
     int myid; /* My rank */
     int nprocs; /* Number of processors */
-    int iteration_num = 100; // number of training iterations
+    int iteration_num = 300; // number of training iterations
     int population_num = 200; // population size for ga.in training
     int initialized;
 
@@ -624,7 +627,7 @@ int main(int argc, char *argv[]) {
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
-      /*  if (myid == 0) {
+        if (myid == 0) {
             FILE *ga_input,*ga_line;
             //sprintf(test,"ga_%d.in", j);
             ga_input = fopen("ga.in","w");
@@ -642,8 +645,8 @@ int main(int argc, char *argv[]) {
                 chdir(folder);
 
                 ga_line = fopen("ga_line","r");
-                fgets(variables,200,ga_line);
-                fputs(variables,ga_input);
+                fgets(variables,500, ga_line);
+                fputs(variables, ga_input);
 
                 fclose(ga_line);
 
@@ -664,7 +667,7 @@ int main(int argc, char *argv[]) {
 	    system(cmdexec);
         }
 	printf("Iteration = %d done \n", j);
-    MPI_Barrier(MPI_COMM_WORLD);*/
+    MPI_Barrier(MPI_COMM_WORLD);
     }
     MPI_Finalize();
 
