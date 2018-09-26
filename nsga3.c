@@ -210,23 +210,21 @@ int main(int argc, char *argv[]) {
         }
 
         /* translates pointer to selected population into arrays for variable and rank */
-        if(suppress_output==0) {
-            printf("\nParent Variables and Objectives:\n");
-            for(i=0;i<N;i++) {
-                for(j=0;j<nvar;j++) {
-                    var_parent[j][i] = var_pop[j][point_parent[i]];
-                    printf("%lf ",var_parent[j][i]);
-                }
-                printf(" | ");
-                for(j=0;j<nobj;j++) {
-                    obj_parent[j][i] = obj_pop[j][point_parent[i]];
-                    printf("%lf ",obj_parent[j][i]);
-                }
-                rank[i] = rank2[point_parent[i]];
-                printf("\n");
+        if(suppress_output==0) printf("\nParent Variables and Objectives:\n");
+        for(i=0;i<N;i++) {
+            for(j=0;j<nvar;j++) {
+                var_parent[j][i] = var_pop[j][point_parent[i]];
+                if(suppress_output==0) printf("%lf ",var_parent[j][i]);
             }
-            printf("\n");
+            if(suppress_output==0) printf(" | ");
+            for(j=0;j<nobj;j++) {
+                obj_parent[j][i] = obj_pop[j][point_parent[i]];
+                if(suppress_output==0) printf("%lf ",obj_parent[j][i]);
+            }
+            rank[i] = rank2[point_parent[i]];
+            if(suppress_output==0) printf("\n");
         }
+        if(suppress_output==0) printf("\n");
 
     } else {
         read_pop_input(new_input,var_new,obj_new); 
@@ -258,25 +256,29 @@ int main(int argc, char *argv[]) {
                 }
                 printf("\n");
             }
-            printf("\nParent Variables and Objectives:\n");
-            for(i=0;i<N;i++) {
-                for(j=0;j<nvar;j++) {
-                    var_parent[j][i] = var_new[j][i]; //copies var_new to var_parent for consistency
-                    printf("%lf ",var_parent[j][i]); 
-                }
-                printf(" | ");
-                for(j=0;j<nobj;j++) {
-                    obj_parent[j][i] = obj_new[j][i];
-                    printf("%lf ",obj_parent[j][i]);
-                }
-                printf("\n");
-            }
-            printf("\n");
         }
+        if(suppress_output==0) printf("\nParent Variables and Objectives:\n");
+        for(i=0;i<N;i++) {
+            for(j=0;j<nvar;j++) {
+                var_parent[j][i] = var_new[j][i]; //copies var_new to var_parent for consistency
+                if(suppress_output==0) printf("%lf ",var_parent[j][i]); 
+            }
+            if(suppress_output==0) printf(" | ");
+            for(j=0;j<nobj;j++) {
+                obj_parent[j][i] = obj_new[j][i];
+                if(suppress_output==0) printf("%lf ",obj_parent[j][i]);
+            }
+            if(suppress_output==0) printf("\n");
+        }
+        if(suppress_output==0) printf("\n");
+        
     }
     /*  SAVES PARENT POPULATION  */
-    create = fopen(all_inputs,"w");
-    fclose(create);
+    if(access(all_inputs, F_OK) == -1) {
+        create = fopen(all_inputs,"w");
+        fclose(create);
+    }
+
     write_pop_file(old_input,all_inputs,var_parent,obj_parent,1);
     /* generates child population via crossover and mutation */
     select_crossover(rank,var_parent,var_child);
@@ -288,7 +290,11 @@ int main(int argc, char *argv[]) {
             }
             printf("\n");
         }
+    }
+
         select_mutants(var_parent,var_child,lower_upper);
+    if(suppress_output==0) {
+
         printf("\nFinal Child Population:\n");
         for(i=0;i<N;i++) {
             for(j=0;j<nvar;j++) {
@@ -297,6 +303,7 @@ int main(int argc, char *argv[]) {
             printf("\n");
         } 
     }
+    
     
     /* Saves child population */
     write_pop_file(new_input,all_inputs,var_child,empty_obj,0);
@@ -495,7 +502,7 @@ int associate(double norm_obj[nobj][2*N],double hyperplane[nobj][size_hyperplane
 
     /* Association */
     for(i=0;i<2*N;i++) { // loop over population
-      printf("In loop for population index %d\n", i);
+        if(suppress_output==0) printf("In loop for population index %d\n", i);
         for(j=0;j<size_hyperplane;j++) { // loop over hyperplane 
             for(k=0;k<nobj;k++) { // loop over objectives
                 two_norm += hyperplane[k][j]*hyperplane[k][j]; // accumulate for calculation of two_norm
@@ -672,26 +679,29 @@ int select_crossover(int r[],double var_parent[nvar][N],double var_child[nvar][N
         /* selects two parents for mating via roulette-wheel selection */
         for(j=0;j<2;j++) { 
             rand_num=(double)rand()/(double)RAND_MAX; // random number [0,1]
-            xlow=0;
-            xhigh=N;
-            n=N/2;
-            while(xlow < xhigh) // searches interval to find where m falls and report that value
-            {
-                if(rand_num>raprob[n-1] && rand_num<=raprob[n])
-                {
-                        break;
-                }
-                else if (rand_num > raprob[n])
-                {
-                        xlow=n+1;
-                        n=(int)(xlow+xhigh)/2;
-                }
-                else if(rand_num < raprob[n])
-                {
-                        xhigh=n-1;
-                        n=(int)(xlow+xhigh)/2;
-                }
-  		    }
+            // xlow=0;
+            // xhigh=N;
+            // n=N/2;
+            // while(xlow < xhigh) // searches interval to find where m falls and report that value
+            // {
+            //         printf("I am HERE!\n");
+
+            //     if(rand_num>raprob[n-1] && rand_num<=raprob[n])
+            //     {
+            //             break;
+            //     }
+            //     else if (rand_num > raprob[n])
+            //     {
+            //             xlow=n+1;
+            //             n=(int)(xlow+xhigh)/2;
+            //     }
+            //     else if(rand_num < raprob[n])
+            //     {
+            //             xhigh=n-1;
+            //             n=(int)(xlow+xhigh)/2;
+            //     }
+  		    // }
+            n=(int)(rand_num*(N+1));
             mating_pair[j]=n;
         }
   		for(j=0;j<nvar;j++) {
@@ -714,6 +724,7 @@ int select_mutants(double var_parent[nvar][N], double var_child[nvar][N],struct 
     double BM_uniform_1, BM_uniform_2, BM_normal; // rands for box-muller method - normal distributed rand
     int n_start = N-n_mutants; 
     double sigma;
+    double mutant;
     for(i=0;i<n_mutants;i++) {
         unit_rand1 = (double)rand()/(double)(1.0 + RAND_MAX);
         parent_mutate = (int)(unit_rand1*(double)(N)); // picks parent to mutate
@@ -721,10 +732,13 @@ int select_mutants(double var_parent[nvar][N], double var_child[nvar][N],struct 
         for(j=0;j<n_var_mutate;j++) {
             unit_rand2 = rand()/(1.0 + RAND_MAX);
             var_mutate = (int)(unit_rand2*(double)(nvar)); // picks variable to be mutated
-            sigma = 0.1*(lower_upper[var_mutate].y-lower_upper[var_mutate].x);
-            BM_uniform_1 = (double)rand()/(double)RAND_MAX;
-            BM_uniform_2 = (double)rand()/(double)RAND_MAX;
-            BM_normal = sqrt(-2*log(BM_uniform_1))*cos(2*M_PI*BM_uniform_2);
+            do {
+                sigma = 0.1*(lower_upper[var_mutate].y-lower_upper[var_mutate].x);
+                BM_uniform_1 = (double)rand()/(double)RAND_MAX;
+                BM_uniform_2 = (double)rand()/(double)RAND_MAX;
+                BM_normal = sqrt(-2*log(BM_uniform_1))*cos(2*M_PI*BM_uniform_2);
+                mutant = var_child[var_mutate][n_start+i] + sigma*BM_normal;
+            } while (mutant < lower_upper[var_mutate].x || mutant > lower_upper[var_mutate].y);
             var_child[var_mutate][n_start+i] += sigma*BM_normal;
         }
     }
@@ -737,7 +751,7 @@ int read_var_input(char filename[],struct bound bounds[]) {
     input = fopen(filename,"r");
 
     if (input == NULL) {
-        printf("No variable input file exists"); // null pointer handler
+        printf("%s file does not exist\n",filename); // null pointer handler
         exit(0);
     }    
 
@@ -755,7 +769,7 @@ int read_var_input(char filename[],struct bound bounds[]) {
     for(i=0;i<nvar;i++) {
         fscanf(input,"%lf",&bounds[i].y);
     }
-    fscanf(input,"%lf",&suppress_output);
+    fscanf(input,"%d",&suppress_output);
 
     fclose(input);
     return(0);
@@ -798,6 +812,7 @@ int write_pop_file(char fileName[],char allName[],double x[][N], double y[][N], 
     int i, j;
     output = fopen(fileName,"w"); // creates output file, overriding previous file if applicable
     all_out = fopen(allName,"a");
+
     fprintf(output,"%d\n",N);
     if(type==1) fprintf(all_out,"%d\n",N);
     for(i=0;i<N;i++) {
@@ -815,6 +830,7 @@ int write_pop_file(char fileName[],char allName[],double x[][N], double y[][N], 
         if(type==1) fprintf(all_out,"\n");
     }
     fclose(output);
+    fclose(all_out);
     return(0);
 }
 
