@@ -65,7 +65,9 @@ int main(int argc, char *argv[]) {
     char new_input[] = "ga.in"; // stores current generation
     char var_input[] = "var.in"; // stores variables
     char hyper[] = "hyperplane.in"; // stores hyperplane
-    struct bound lower_upper[50]; 
+    struct bound lower_upper[50];
+    int iteration = 0;
+    char c;
 
     srand(time(0));
 
@@ -75,7 +77,8 @@ int main(int argc, char *argv[]) {
         create_hyperplane();
     }
 
-    FILE *hyper_input,*create;
+
+    FILE *hyper_input,*create,*iterate;
     char point[9];
     hyper_input = fopen("hyperplane.in","r");
     fgets(point,9,hyper_input);
@@ -90,6 +93,7 @@ int main(int argc, char *argv[]) {
         }
     }    
 
+    printf("Working!");
 
     double var_old[nvar][N], var_new[nvar][N], var_pop[nvar][2*N];
     double obj_old[nobj][N], obj_new[nobj][N], obj_pop[nobj][2*N];
@@ -276,8 +280,20 @@ int main(int argc, char *argv[]) {
     /*  SAVES PARENT POPULATION  */
     if(access(all_inputs, F_OK) == -1) {
         create = fopen(all_inputs,"w");
+        // fprintf(create,"%d",0); // creates iteration counter at top of document
         fclose(create);
     }
+    // } else {
+    //     create = fopen(all_inputs,"r+");
+    //     c = fgetc(create);
+    //     sscanf(&c,"%d",&iteration); // scans in current iteration
+    //     fclose(create);
+    // }
+
+    // iterate = fopen(all_inputs,"w");
+    // fprintf(iterate,"%d",iteration+1); // increments iteration
+    // fclose(iterate);
+    // printf("Iteration Number: %d",iteration+1);
 
     write_pop_file(old_input,all_inputs,var_parent,obj_parent,1);
     /* generates child population via crossover and mutation */
@@ -732,12 +748,16 @@ int select_mutants(double var_parent[nvar][N], double var_child[nvar][N],struct 
         for(j=0;j<n_var_mutate;j++) {
             unit_rand2 = rand()/(1.0 + RAND_MAX);
             var_mutate = (int)(unit_rand2*(double)(nvar)); // picks variable to be mutated
+            // printf("Variable mutated id: %d\n", var_mutate);
+            sigma = 0.1*(lower_upper[var_mutate].y-lower_upper[var_mutate].x);
+            // printf("Upper: %lf, Lower: %lf, sigma: %lf\n", lower_upper[var_mutate].y,lower_upper[var_mutate].x,sigma);
             do {
-                sigma = 0.1*(lower_upper[var_mutate].y-lower_upper[var_mutate].x);
                 BM_uniform_1 = (double)rand()/(double)RAND_MAX;
                 BM_uniform_2 = (double)rand()/(double)RAND_MAX;
                 BM_normal = sqrt(-2*log(BM_uniform_1))*cos(2*M_PI*BM_uniform_2);
                 mutant = var_child[var_mutate][n_start+i] + sigma*BM_normal;
+                // printf("Original: %lf\n", var_child[var_mutate][n_start+i]);
+                // printf("Mutant candidate: %lf\n", mutant);
             } while (mutant < lower_upper[var_mutate].x || mutant > lower_upper[var_mutate].y);
             var_child[var_mutate][n_start+i] += sigma*BM_normal;
         }
